@@ -41,20 +41,22 @@ func AddProducts(p *Product) {
 }
 
 func UpdateProducts(id int, p *Product) error {
-	fp, pos, err := findProduct(id)
+	_, pos, err := findProduct(id)
 	if err != nil {
 		return err
 	}
 	p.ID = id
-	productList[pos] = fp
+	productList[pos] = p
 	return nil
 }
 
 var ErrProductNotFound = fmt.Errorf("Product not found")
 
 func findProduct(id int) (*Product, int, error) {
+	fmt.Println("findProduct: Product ID: ", id)
 	for pos, p := range productList {
 		if p.ID == id {
+			fmt.Printf("findProduct: Found Product ID: %#v", p)
 			return p, pos, nil
 		}
 	}

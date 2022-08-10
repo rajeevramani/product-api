@@ -31,11 +31,12 @@ func (p *Products) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		p.l.Println("In Put")
 		path := regexp.MustCompile(`/([0-9]+)`)
 		g := path.FindAllStringSubmatch(r.URL.Path, -1)
+		p.l.Printf("Submatch: %#v", g)
 		if len(g) != 1 {
 			http.Error(rw, "Invalid Uri", http.StatusBadRequest)
 		}
-		if len(g[0]) != 1 {
-			http.Error(rw, "Invalid Uri", http.StatusBadRequest)
+		if len(g[0]) != 2 {
+			http.Error(rw, "Invalid Uri 2", http.StatusBadRequest)
 		}
 		idString := g[0][1]
 		id, _ := strconv.Atoi(idString)
@@ -88,10 +89,12 @@ func (p *Products) updateProducts(id int, rw http.ResponseWriter, r *http.Reques
 	err = data.UpdateProducts(id, product)
 
 	if err == data.ErrProductNotFound {
+		p.l.Println("Error - 1 %#v", err)
 		http.Error(rw, "Product Not found", http.StatusNotFound)
 		return
 	}
 	if err != nil {
+		p.l.Println("Error - 2 %#v", err)
 		http.Error(rw, "Another problem", http.StatusNotFound)
 		return
 	}
