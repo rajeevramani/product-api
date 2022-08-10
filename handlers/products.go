@@ -3,10 +3,10 @@ package handlers
 import (
 	"log"
 	"net/http"
-	"regexp"
 	"strconv"
 
 	"example.com/product-api/data"
+	"github.com/gorilla/mux"
 )
 
 type Products struct {
@@ -17,38 +17,14 @@ func NewProduct(l *log.Logger) *Products {
 	return &Products{l}
 }
 
-func (p *Products) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
-		p.getProducts(rw, r)
-		return
-	}
-	if r.Method == http.MethodPost {
-		p.addProducts(rw, r)
-		return
-	}
+/*
+Getting rid of the ServeHTTP since we are using the
+GorrillaFramework.
 
-	if r.Method == http.MethodPut {
-		p.l.Println("In Put")
-		path := regexp.MustCompile(`/([0-9]+)`)
-		g := path.FindAllStringSubmatch(r.URL.Path, -1)
-		p.l.Printf("Submatch: %#v", g)
-		if len(g) != 1 {
-			http.Error(rw, "Invalid Uri", http.StatusBadRequest)
-		}
-		if len(g[0]) != 2 {
-			http.Error(rw, "Invalid Uri 2", http.StatusBadRequest)
-		}
-		idString := g[0][1]
-		id, _ := strconv.Atoi(idString)
-		p.l.Println("Got Id", id)
-		p.updateProducts(id, rw, r)
-		return
-	}
+Instead we will make getProducts a public method with GetProducts
+*/
 
-	//catch all
-	rw.WriteHeader(http.StatusMethodNotAllowed)
-}
-func (p *Products) getProducts(rw http.ResponseWriter, r *http.Request) {
+func (p *Products) GetProducts(rw http.ResponseWriter, r *http.Request) {
 	lp := data.GetProducts()
 	err := lp.ToJSON(rw)
 	if err != nil {
@@ -77,24 +53,32 @@ func (p *Products) addProducts(rw http.ResponseWriter, r *http.Request) {
 * This method will decode the request json
 to the product
 */
-func (p *Products) updateProducts(id int, rw http.ResponseWriter, r *http.Request) {
+func (p *Products) UpdateProducts(rw http.ResponseWriter, r *http.Request) {
 	p.l.Println("handle update products")
+	vars := mux.Vars(r)
+	idStr := vars["id"]
 
-	product := &data.Product{}
-	err := product.FromJSON(r.Body)
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(rw, "Unable to unmarshall data", http.StatusBadRequest)
+		http.Error(rw, "invalid id provided", http.StatusBadRequest)
 	}
 
-	err = data.UpdateProducts(id, product)
+	product := &data.Product{}
+	errp := product.FromJSON(r.Body)
+	if errp != nil {
+		http.Error(rw, "Unable to unmarshall data", http.StatusBadRequest)
+		return
+	}
 
-	if err == data.ErrProductNotFound {
-		p.l.Println("Error - 1 %#v", err)
+	errp = data.UpdateProducts(id, product)
+
+	if errp == data.ErrProductNotFound {
+		p.l.Printf("Error - 1 %#v", errp)
 		http.Error(rw, "Product Not found", http.StatusNotFound)
 		return
 	}
 	if err != nil {
-		p.l.Println("Error - 2 %#v", err)
+		p.l.Printf("Error - 2 %#v", errp)
 		http.Error(rw, "Another problem", http.StatusNotFound)
 		return
 	}
