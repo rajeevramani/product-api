@@ -1,3 +1,20 @@
+// Package classification Petstore API.
+//
+// the purpose of this application is to provide an application
+//
+//     Schemes: http, https
+//     Host: localhost
+//     BasePath: /
+//     Version: 0.0.1
+//
+//     Consumes:
+//     - application/json
+//
+//     Produces:
+//     - application/json
+//
+// swagger:meta
+
 package handlers
 
 import (
@@ -19,12 +36,13 @@ func NewProduct(l *log.Logger) *Products {
 	return &Products{l}
 }
 
-/*
-Getting rid of the ServeHTTP since we are using the
-GorrillaFramework.
-
-Instead we will make getProducts a public method with GetProducts
-*/
+// swagger:route GET /pets pets users listPets
+//
+// Lists pets filtered by some parameters.
+// Responses:
+//   default: genericError
+//   200: productResponse
+//   500: InternalServerError
 
 func (p *Products) GetProducts(rw http.ResponseWriter, r *http.Request) {
 	lp := data.GetProducts()
@@ -123,7 +141,7 @@ func (p Products) MiddlewareProductValidation(next http.Handler) http.Handler {
 		err := product.Validate()
 		if err != nil {
 			p.l.Println("[Error] validation product: ", err)
-			http.Error(rw, fmt.Sprintf("Validation failed: %s",err), http.StatusBadRequest)
+			http.Error(rw, fmt.Sprintf("Validation failed: %s", err), http.StatusBadRequest)
 			return
 		}
 		// ctx := context.WithValue(r.Context(), KeyProduct{}, product)
