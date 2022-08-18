@@ -1,24 +1,6 @@
-// Package classification Petstore API.
-//
-// the purpose of this application is to provide an application
-//
-//     Schemes: http, https
-//     Host: localhost
-//     BasePath: /
-//     Version: 0.0.1
-//
-//     Consumes:
-//     - application/json
-//
-//     Produces:
-//     - application/json
-//
-// swagger:meta
-
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -28,126 +10,49 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// KeyProduct is a key used for the Product object in the context
+type KeyProduct struct{}
+
 type Products struct {
 	l *log.Logger
+	v *data.Validation
 }
 
-func NewProduct(l *log.Logger) *Products {
-	return &Products{l}
+func NewProducts(l *log.Logger, v *data.Validation) *Products {
+	return &Products{l, v}
 }
 
-// swagger:route GET /pets pets users listPets
-//
-// Lists pets filtered by some parameters.
-// Responses:
-//   default: genericError
-//   200: productResponse
-//   500: InternalServerError
+// ErrInvalidProductPath is an error message when the product path is not valid
+var ErrInvalidProductPath = fmt.Errorf("Invalid Path, path should be /products/[id]")
 
-func (p *Products) GetProducts(rw http.ResponseWriter, r *http.Request) {
-	lp := data.GetProducts()
-	err := lp.ToJSON(rw)
-	if err != nil {
-		http.Error(rw, "Invalid data", http.StatusInternalServerError)
-	}
+// GenericError is a generic error message returned by a server
+type GenericError struct {
+	Message string `json:"message"`
 }
 
-/*
-* This method will decode the request json
-to the product
-*/
-func (p *Products) AddProducts(rw http.ResponseWriter, r *http.Request) {
-	p.l.Println("handle post products")
-
-	// product := &data.Product{}
-	// err := product.FromJSON(r.Body)
-	// if err != nil {
-	// 	http.Error(rw, "Unable to unmarshall data", http.StatusBadRequest)
-	// }
-
-	// prod := r.Context().Value(KeyProduct{})(data.Product)
-	// prod := r.Context().Value("KeyProduct")(data.Product)
-
-	pr := r.Context().Value(ContextUserKey).(data.Product)
-	data.AddProducts(&pr)
-
-	// product := r.Context().Value(KeyProduct{})
-
-	// data.AddProducts(&product)
-	p.l.Printf("prod: %#v", pr)
+// ValidationError is a collection of validation error messages
+type ValidationError struct {
+	Messages []string `json:"messages"`
 }
 
-/*
-* This method will decode the request json
-to the product
-*/
-func (p *Products) UpdateProducts(rw http.ResponseWriter, r *http.Request) {
-	p.l.Println("handle update products")
+func NewProduct(l *log.Logger, v *data.Validation) *Products {
+	return &Products{l, v}
+}
+
+// getProductID returns the product ID from the URL
+// Panics if cannot convert the id into an integer
+// this should never happen as the router ensures that
+// this is a valid number
+func getProductID(r *http.Request) int {
+	// parse the product id from the url
 	vars := mux.Vars(r)
-	idStr := vars["id"]
 
-	id, err := strconv.Atoi(idStr)
+	// convert the id into an integer and return
+	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		http.Error(rw, "invalid id provided", http.StatusBadRequest)
+		// should never happen
+		panic(err)
 	}
 
-	// product := &data.Product{}
-	// errp := product.FromJSON(r.Body)
-	// if errp != nil {
-	// 	http.Error(rw, "Unable to unmarshall data", http.StatusBadRequest)
-	// 	return
-	// }
-	// prod := r.Context().Value("KeyProduct").(data.Product)
-	product := r.Context().Value(ContextUserKey).(data.Product)
-
-	errp := data.UpdateProducts(id, &product)
-
-	if errp == data.ErrProductNotFound {
-		p.l.Printf("Error - 1 %#v", errp)
-		http.Error(rw, "Product Not found", http.StatusNotFound)
-		return
-	}
-	if err != nil {
-		p.l.Printf("Error - 2 %#v", errp)
-		http.Error(rw, "Another problem", http.StatusNotFound)
-		return
-	}
-	p.l.Printf("update prod: %#v", product)
-}
-
-/*
-adding middleware to handle common functionality between POST and PUT
-where we get something in the body of the request
-*/
-
-// type KeyProduct struct {
-// }
-
-type ContextKey string
-
-const ContextUserKey ContextKey = "product"
-
-func (p Products) MiddlewareProductValidation(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		product := data.Product{}
-		errp := product.FromJSON(r.Body)
-		if errp != nil {
-			http.Error(rw, "Unable to unmarshall data", http.StatusBadRequest)
-			return
-		}
-
-		// adding validation
-
-		err := product.Validate()
-		if err != nil {
-			p.l.Println("[Error] validation product: ", err)
-			http.Error(rw, fmt.Sprintf("Validation failed: %s", err), http.StatusBadRequest)
-			return
-		}
-		// ctx := context.WithValue(r.Context(), KeyProduct{}, product)
-		ctx := context.WithValue(r.Context(), ContextUserKey, product)
-		r = r.WithContext(ctx)
-
-		next.ServeHTTP(rw, r)
-	})
+	return id
 }
